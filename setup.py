@@ -37,7 +37,7 @@ setup(
     description="Some Helpful Classes and Functions for Scraping Amazon Data",
     long_description=long_description,
     license="MIT",
-    url="https://github.com/adamlwgriffiths/amazon_scraper",
+    url="https://github.com/KidCoderT/amazon-scraper",
     test_suite="tests",
     packages=["src"],
     install_requires=[
