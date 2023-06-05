@@ -26,10 +26,6 @@ from setuptools import setup
 with open("README.rst") as f:
     long_description = f.read()
 
-__version__ = None
-with open("amazon_scraper/version.py") as f:
-    exec(f.read())
-
 setup(
     name="amazon_scrape_toolkit",
     version="0.0.1",
