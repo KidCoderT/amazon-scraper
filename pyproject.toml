@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "amazon-scraper-toolkit"
+version = "0.0.1"
+description = "Some Helpful Classes and Functions for Scraping Amazon Data"
+readme = "README.md"
+authors = [{ name = "Tejas" }]
+license = { file = "LICENSE" }
+classifiers = [
+    "Natural Language :: English",
+    "Intended Audience :: Developers",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX",
+    "Programming Language :: Python",
+    "License :: OSI Approved :: BSD License",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Internet",
+]
+keywords = ["amazon", "scraper", "toolkit"]
+dependencies = [
+    "beautifulsoup4",
+    "requests",
+    "lxml"
+]
+requires-python = ">=3.9"
+
+[project.optional-dependencies]
+dev = ["black", "pylint", "pep8"]
+
+[project.urls]
+Homepage = "https://github.com/KidCoderT/amazon-scraper"

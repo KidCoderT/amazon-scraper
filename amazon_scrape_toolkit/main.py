@@ -7,6 +7,8 @@ from functools import wraps
 from dataclasses import dataclass
 import requests
 
+logger = logging.getLogger()
+
 
 @dataclass
 class AmazonHeaders:
@@ -58,7 +60,9 @@ def timer():
     yield round(time.monotonic() - start_time, 3)
 
 
-def get_all_product_ids(link: str, headers: AmazonHeaders, max_products=10000000000000):
+def get_all_product_ids(
+    link: str, headers: AmazonHeaders, pages_to_scrape=10000000000000
+):
     """
     Fetches all product IDs from the given Amazon search link.
 
@@ -83,8 +87,10 @@ def get_all_product_ids(link: str, headers: AmazonHeaders, max_products=10000000
     start_time = time.monotonic()
     soup_pages = []
 
+    i = 0
+
     try:
-        for _ in set(range(max_products)):
+        while i < pages_to_scrape:
             fetch_timer = timer()
             next(fetch_timer)
 
@@ -106,16 +112,18 @@ def get_all_product_ids(link: str, headers: AmazonHeaders, max_products=10000000
                 )
 
             page_link = f"https://www.amazon.in{next_page_a['href']}"
+            logger.info(f"found page idx: {no_of_pages}")
             soup_pages.append(soup)
+            i += 1
 
     except (TypeError, AttributeError):
-        logging.warn(f"final_page: {page_link}")
+        logger.warn(f"final_page: {page_link}")
 
-    logging.info(f"full fetch duration: {time.monotonic() - start_time}")
-    logging.info(f"scraped {no_of_pages} pages")
-    logging.debug(f"avg page fetch time: {sum(fetch_times) / len(fetch_times)}")
-    logging.debug(f"max page fetch time: {max(fetch_times)}")
-    logging.debug(f"min page fetch time: {min(fetch_times)}")
+    logger.info(f"full fetch duration: {time.monotonic() - start_time}")
+    logger.info(f"scraped {no_of_pages} pages")
+    logger.debug(f"avg page fetch time: {sum(fetch_times) / len(fetch_times)}")
+    logger.debug(f"max page fetch time: {max(fetch_times)}")
+    logger.debug(f"min page fetch time: {min(fetch_times)}")
 
     scrape_timer = timer()
     next(scrape_timer)
@@ -129,14 +137,17 @@ def get_all_product_ids(link: str, headers: AmazonHeaders, max_products=10000000
         all_product_ids.extend(product_ids)
         scrape_times.append(time.monotonic() - st)
 
-    [scrape_soup_links(soup) for soup in set(soup_pages)]
+    for soup in set(soup_pages):
+        old_no = len(all_product_ids)
+        scrape_soup_links(soup)
+        logger.info(f"found {len(all_product_ids) - old_no} products")
 
-    logging.info(f"full scrape duration: {next(scrape_timer)}")
-    logging.info(f"scraped {len(all_product_ids)} product id's")
-    logging.info(f"but only {len(set(all_product_ids))} product id's are unique")
-    logging.debug(f"avg page half scrape time: {sum(scrape_times) / len(scrape_times)}")
-    logging.debug(f"max page half scrape time: {max(scrape_times)}")
-    logging.debug(f"min page half scrape time: {min(scrape_times)}")
+    logger.info(f"full scrape duration: {next(scrape_timer)}")
+    logger.info(f"scraped {len(all_product_ids)} product id's")
+    logger.info(f"but only {len(set(all_product_ids))} product id's are unique")
+    logger.debug(f"avg page half scrape time: {sum(scrape_times) / len(scrape_times)}")
+    logger.debug(f"max page half scrape time: {max(scrape_times)}")
+    logger.debug(f"min page half scrape time: {min(scrape_times)}")
 
     return set(all_product_ids)
 
@@ -159,10 +170,12 @@ def product_scraper(fetch_ratings: bool = True, get_others: bool = True):
             data_func_timer = timer()
             next(data_func_timer)
             data = func(soup, product_id, *args, **kwargs)
-            assert isinstance(data, (dict, None)), "Output should be Dict or None!"
+            assert data is None or isinstance(
+                data, dict
+            ), "Output should be Dict or None!"
 
             if data is None:
-                logging.info(f"page_failed [{product_id}]")
+                logger.info(f"page_failed [{product_id}]")
                 return None
 
             data_func_timer = next(data_func_timer)
@@ -270,7 +283,7 @@ def product_scraper(fetch_ratings: bool = True, get_others: bool = True):
             ratings_fetch_timer = next(ratings_fetch_timer)
 
             # log success in fetching thing
-            logging.info(f"fetched_everything [{product_id}]")
+            logger.info(f"fetched_everything [{product_id}]")
 
             return ProductInfo(
                 new_phones_to_add,
@@ -314,7 +327,7 @@ def get_all_products_data(link: str, function, headers: AmazonHeaders, **kwargs)
 
     while len(product_ids_to_scrape) > 0:
         id_to_scrape = product_ids_to_scrape.pop()
-        logging.info(f"Scraping product with ID: {id_to_scrape}")
+        logger.info(f"Scraping product with ID: {id_to_scrape}")
 
         if id_to_scrape in scraped_ids:
             continue
@@ -337,11 +350,12 @@ def get_all_products_data(link: str, function, headers: AmazonHeaders, **kwargs)
 
         if product_data not in data:
             data.append(product_data)
-            logging.info(f"product_scraped and saved [{id_to_scrape}]")
+            logger.info(f"product_scraped and saved [{id_to_scrape}]")
         else:
-            logging.info(f"product data not new and so not saved [{id_to_scrape}]")
+            logger.info(f"product data not new and so not saved [{id_to_scrape}]")
 
-        logging.info(f"Remaining products to scrape: {len(product_ids_to_scrape)}")
+        logger.info(f"Remaining products to scrape: {len(product_ids_to_scrape)}")
+        logger.info("-------")
 
-    logging.info(f"DONE - TIME TAKEN: {next(code_timer)}")
+    logger.info(f"DONE - TIME TAKEN: {next(code_timer)}")
     return data
