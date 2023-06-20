@@ -39,7 +39,7 @@ class ProductInfo:
     """Data class representing the information of a product"""
 
     other_products: list[str]
-    ratings: dict[str:int]
+    ratings: dict[str, int]
     data: dict
     custom_scraper_time_taken: float
     ratings_scraper_time_taken: float
@@ -169,10 +169,14 @@ def product_scraper(fetch_ratings: bool = True, get_others: bool = True):
         def _wrapper(soup: bs4.BeautifulSoup, product_id: str, *args, **kwargs):
             data_func_timer = timer()
             next(data_func_timer)
-            data = func(soup, product_id, *args, **kwargs)
+            try:
+                data = func(soup, product_id, *args, **kwargs)
+            except Exception:
+                data = None
+
             assert data is None or isinstance(
-                data, dict
-            ), "Output should be Dict or None!"
+                    data, dict
+                    ), "Output should be Dict or None!"
 
             if data is None:
                 logger.info(f"page_failed [{product_id}]")

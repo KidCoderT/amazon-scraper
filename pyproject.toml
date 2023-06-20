@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "amazon-scraper-toolkit"
-version = "1.0.0"
+version = "1.0.1"
 description = "Some Helpful Classes and Functions for Scraping Amazon Data"
 readme = "README.md"
 authors = [{ name = "Tejas" }]
@@ -34,15 +34,3 @@ dev = ["black", "pylint", "pep8"]
 
 [project.urls]
 Homepage = "https://github.com/KidCoderT/amazon-scraper"
-
-[tool.bumpver]
-current_version = "1.0.0"
-version_pattern = "MAJOR.MINOR.PATCH"
-commit_message = "bump version {old_version} -> {new_version}"
-commit = true
-tag = true
-push = false
-
-[tool.bumpver.file_patterns]
-"pyproject.toml" = ['current_version = "{version}"']
-
