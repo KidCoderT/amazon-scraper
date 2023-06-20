@@ -1,4 +1,5 @@
 import re
+from typing import Optional
 import bs4
 import time
 import json
@@ -61,7 +62,9 @@ def timer():
 
 
 def get_all_product_ids(
-    link: str, headers: AmazonHeaders, pages_to_scrape=10000000000000
+    link: str,
+    headers: AmazonHeaders,
+    pages_to_scrape=10000000000000,
 ):
     """
     Fetches all product IDs from the given Amazon search link.
@@ -175,8 +178,8 @@ def product_scraper(fetch_ratings: bool = True, get_others: bool = True):
                 data = None
 
             assert data is None or isinstance(
-                    data, dict
-                    ), "Output should be Dict or None!"
+                data, dict
+            ), "Output should be Dict or None!"
 
             if data is None:
                 logger.info(f"page_failed [{product_id}]")
@@ -303,7 +306,13 @@ def product_scraper(fetch_ratings: bool = True, get_others: bool = True):
     return inner_decorator
 
 
-def get_all_products_data(link: str, function, headers: AmazonHeaders, **kwargs):
+def get_all_products_data(
+    link: str,
+    function,
+    headers: AmazonHeaders,
+    pages_to_scrape=10000000000000,
+    max_products=float("inf"),
+):
     """
     Fetches data for all products from the given Amazon search link.
 
@@ -317,7 +326,9 @@ def get_all_products_data(link: str, function, headers: AmazonHeaders, **kwargs)
         list[dict]: A list of product data dictionaries.
     """
 
-    product_ids_to_scrape: set[str] = get_all_product_ids(link, headers, **kwargs)
+    product_ids_to_scrape: set[str] = get_all_product_ids(
+        link, headers, pages_to_scrape
+    )
     scraped_ids = []
     data = []
 
@@ -329,7 +340,7 @@ def get_all_products_data(link: str, function, headers: AmazonHeaders, **kwargs)
         response.raise_for_status()
         return response.content
 
-    while len(product_ids_to_scrape) > 0:
+    while len(product_ids_to_scrape) > 0 and len(scraped_ids) < max_products:
         id_to_scrape = product_ids_to_scrape.pop()
         logger.info(f"Scraping product with ID: {id_to_scrape}")
 
@@ -338,7 +349,7 @@ def get_all_products_data(link: str, function, headers: AmazonHeaders, **kwargs)
 
         link = f"https://www.amazon.in/dp/{id_to_scrape}"
         soup = bs4.BeautifulSoup(fetch_webpage(link), "lxml")
-        output: ProductInfo = function(soup, id_to_scrape)
+        output: Optional[ProductInfo] = function(soup, id_to_scrape)
 
         if output is None:
             continue
