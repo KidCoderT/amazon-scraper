@@ -1,9 +1,8 @@
 import re
-from typing import Optional
 import bs4
 import time
-import json
 import logging
+from typing import Optional
 from functools import wraps
 from dataclasses import dataclass
 import requests
@@ -39,8 +38,8 @@ class AmazonHeaders:
 class ProductInfo:
     """Data class representing the information of a product"""
 
-    other_products: list[str]
-    ratings: dict[str, int]
+    other_products: list[str] | None
+    ratings: dict[str, int] | None
     data: dict
     custom_scraper_time_taken: float
     ratings_scraper_time_taken: float
@@ -155,7 +154,9 @@ def get_all_product_ids(
     return set(all_product_ids)
 
 
-def product_scraper(fetch_ratings: bool = True, get_others: bool = True):
+def product_scraper(
+    fetch_ratings: bool = True, get_others: bool = True, should_raise: bool = False
+):
     """
     Decorator to mark a function as a product scraper.
 
@@ -170,27 +171,32 @@ def product_scraper(fetch_ratings: bool = True, get_others: bool = True):
     def inner_decorator(func):
         @wraps(func)
         def _wrapper(soup: bs4.BeautifulSoup, product_id: str, *args, **kwargs):
+            logger.info("\nSCRAPING DATA FROM PRODUCT [%s] -------", product_id)
+
             data_func_timer = timer()
             next(data_func_timer)
+
             try:
                 data = func(soup, product_id, *args, **kwargs)
-            except Exception:
+                assert isinstance(data, dict), "Output Can Only Be A Dictionary"
+                logger.info("STATUS: \033[31mSUCCESS\003[42m")
+            except AssertionError as e:
+                assert not should_raise, e
+                logger.info("STATUS: \033[31mFAILED\003[39m")
                 data = None
 
-            assert data is None or isinstance(
-                data, dict
-            ), "Output should be Dict or None!"
+            data_func_timer = next(data_func_timer)
+            logger.info("FUNC SCRAPER TOOK: [%s]", data_func_timer)
 
             if data is None:
-                logger.info(f"page_failed [{product_id}]")
                 return None
 
-            data_func_timer = next(data_func_timer)
+            # Scraping New Phones
             new_phones_to_add = [] if get_others else None
-
             other_phones_fetch_timer = timer()
             next(other_phones_fetch_timer)
-            if get_others:
+
+            if get_others and isinstance(new_phones_to_add, list):
                 compare_table = soup.find("table", {"id": "HLCXComparisonTable"})
 
                 if isinstance(compare_table, bs4.Tag):
@@ -223,9 +229,10 @@ def product_scraper(fetch_ratings: bool = True, get_others: bool = True):
                     )
                 )
                 new_phones_to_add = list(set(new_phones_to_add))
+
             other_phones_fetch_timer = next(other_phones_fetch_timer)
 
-            # get ratings
+            # Scraping Ratings
             stared_ratings = None
             ratings_fetch_timer = timer()
             next(ratings_fetch_timer)
@@ -246,9 +253,7 @@ def product_scraper(fetch_ratings: bool = True, get_others: bool = True):
 
                 no_of_ratings_div = rating_histogram_div.find(
                     "div",
-                    {
-                        "class": "a-row a-spacing-medium averageStarRatingNumerical",
-                    },
+                    {"class": "a-row a-spacing-medium averageStarRatingNumerical"},
                 )
 
                 if isinstance(no_of_ratings_div, bs4.Tag):
@@ -290,7 +295,10 @@ def product_scraper(fetch_ratings: bool = True, get_others: bool = True):
             ratings_fetch_timer = next(ratings_fetch_timer)
 
             # log success in fetching thing
-            logger.info(f"fetched_everything [{product_id}]")
+            logger.info(
+                "TOOLKIT SCRAPER TOOK: [%s]",
+                ratings_fetch_timer + other_phones_fetch_timer,
+            )
 
             return ProductInfo(
                 new_phones_to_add,
@@ -347,9 +355,12 @@ def get_all_products_data(
         if id_to_scrape in scraped_ids:
             continue
 
-        link = f"https://www.amazon.in/dp/{id_to_scrape}"
-        soup = bs4.BeautifulSoup(fetch_webpage(link), "lxml")
-        output: Optional[ProductInfo] = function(soup, id_to_scrape)
+        try:
+            link = f"https://www.amazon.in/dp/{id_to_scrape}"
+            soup = bs4.BeautifulSoup(fetch_webpage(link), "lxml")
+            output: Optional[ProductInfo] = function(soup, id_to_scrape)
+        except:
+            continue
 
         if output is None:
             continue
@@ -365,11 +376,12 @@ def get_all_products_data(
 
         if product_data not in data:
             data.append(product_data)
-            logger.info(f"product_scraped and saved [{id_to_scrape}]")
+            logger.info(f"ADDED?: YES")
         else:
-            logger.info(f"product data not new and so not saved [{id_to_scrape}]")
+            logger.info(f"ADDED?: NO")
 
-        logger.info(f"Remaining products to scrape: {len(product_ids_to_scrape)}")
+        logger.info(f"REMAINING: {len(product_ids_to_scrape)}")
+        logger.info(f"SCRAPED: {len(data)}")
         logger.info("-------")
 
     logger.info(f"DONE - TIME TAKEN: {next(code_timer)}")
