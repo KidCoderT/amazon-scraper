@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "amazon-scraper-toolkit"
-version = "1.1.0"
+version = "2.0.0"
 description = "Some Helpful Classes and Functions for Scraping Amazon Data"
 readme = "README.md"
 authors = [{ name = "Tejas" }]
